@@ -13,8 +13,11 @@ extern crate pitch_calc;
 extern crate termion;
 extern crate ultrastar_txt;
 
+mod content_providers;
 mod draw;
 mod pitch;
+
+use content_providers::get_content_provider;
 
 use std::io::{stdout, Write};
 use std::path::Path;
@@ -104,8 +107,7 @@ fn run() -> Result<()> {
 
     // construct path and uri to audio file
     let audio_path = header.audio_path;
-    let mut uri = String::from("file://");
-    uri.push_str(audio_path.to_str().unwrap());
+    let content_provider = get_content_provider(audio_path.to_str().unwrap());
 
     // set up openal for capture
     let alto = Alto::load_default().chain_err(|| "could not load openal default implementation")?;
@@ -157,7 +159,7 @@ fn run() -> Result<()> {
 
     // set the URI to play
     playbin
-        .set_property("uri", &uri)
+        .set_property("uri", &content_provider.get_local_file_path())
         .chain_err(|| "can't set uri property on playbin")?;
 
     println!("Playing {} by {}...\n", header.title, header.artist);
