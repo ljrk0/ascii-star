@@ -1,5 +1,11 @@
 //! Abstracts over content providers for the songs.
 
+mod youtube;
+
+pub trait UrlContentProvider {
+    fn urls(&self) -> Vec<&str>;
+}
+
 /// Abstracts over a content provider for the songs.
 pub trait ContentProvider {
     /// Returns the path to a local file, if applicable.

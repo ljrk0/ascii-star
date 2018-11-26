@@ -12,6 +12,9 @@ extern crate log;
 extern crate pitch_calc;
 extern crate termion;
 extern crate ultrastar_txt;
+extern crate hyper;
+extern crate hyper_native_tls;
+extern crate regex;
 
 mod content_providers;
 mod draw;
