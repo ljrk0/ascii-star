@@ -5,7 +5,7 @@ extern crate ultrastar_txt;
 mod errors {
     error_chain!{}
 }
-use errors::*;
+use crate::errors::*;
 
 use colored::*;
 use pitch_calc::*;

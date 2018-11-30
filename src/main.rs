@@ -12,6 +12,9 @@ extern crate log;
 extern crate pitch_calc;
 extern crate termion;
 extern crate ultrastar_txt;
+extern crate hyper;
+extern crate hyper_native_tls;
+extern crate regex;
 
 extern crate glib;
 
@@ -19,12 +22,12 @@ mod content_providers;
 mod draw;
 mod pitch;
 
-use content_providers::get_content_provider;
+use crate::content_providers::get_content_provider;
 
 use std::io::{stdout, Write};
 use std::path::Path;
-use gst::MessageView;
-use gst::prelude::*;
+use crate::gst::MessageView;
+use crate::gst::prelude::*;
 use clap::{App, Arg};
 use termion::screen::AlternateScreen;
 use alto::{Alto, Capture, Mono};
@@ -35,7 +38,7 @@ use pitch_calc::*;
 mod errors {
     error_chain!{}
 }
-use errors::*;
+use crate::errors::*;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHOR: &'static str = env!("CARGO_PKG_AUTHORS");
