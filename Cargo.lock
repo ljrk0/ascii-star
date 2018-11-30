@@ -40,6 +40,7 @@ dependencies = [
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pitch_calc 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",

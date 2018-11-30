@@ -13,6 +13,8 @@ extern crate pitch_calc;
 extern crate termion;
 extern crate ultrastar_txt;
 
+extern crate glib;
+
 mod content_providers;
 mod draw;
 mod pitch;
@@ -161,6 +163,21 @@ fn run() -> Result<()> {
     playbin
         .set_property("uri", &content_provider.get_local_file_path())
         .chain_err(|| "can't set uri property on playbin")?;
+
+    // disable video and subtitle, if they exist
+    // according to: https://github.com/sdroege/gstreamer-rs/blob/4117c01ff2c9ce9b46b8f63315af4dc284788e9b/examples/src/bin/playbin.rs#L27-L35
+    let flags = playbin
+        .get_property("flags")
+        .chain_err(|| "can't get playbin flags")?;
+    let flags_class = ::glib::FlagsClass::new(flags.type_()).unwrap();
+    let flags = flags_class.builder_with_value(flags).unwrap()
+        .unset_by_nick("text")
+        .unset_by_nick("video")
+        .build()
+        .unwrap();
+    playbin
+        .set_property("flags", &flags)
+        .chain_err(|| "can't set playbin flags")?;
 
     println!("Playing {} by {}...\n", header.title, header.artist);
 

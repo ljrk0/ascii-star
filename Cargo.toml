@@ -6,6 +6,7 @@ authors = ["Robin Nehls <git@manol.is>"]
 [dependencies]
 ultrastar-txt = "0.1"
 gstreamer = "0.9"
+glib = "0.4"
 log = "0.3"
 env_logger = "0.4"
 colored = "1.6"
