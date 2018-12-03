@@ -22,7 +22,7 @@ mod content_providers;
 mod draw;
 mod pitch;
 
-use crate::content_providers::get_content_provider;
+use crate::content_providers::get_url_content_provider;
 
 use std::io::{stdout, Write};
 use std::path::Path;
@@ -112,7 +112,10 @@ fn run() -> Result<()> {
 
     // construct path and uri to audio file
     let audio_path = header.audio_path;
-    let content_provider = get_content_provider(audio_path.to_str().unwrap());
+    let content_provider = get_url_content_provider(
+        audio_path
+        .to_str()
+        .chain_err(|| "could not open url content provider")?);
 
     // set up openal for capture
     let alto = Alto::load_default().chain_err(|| "could not load openal default implementation")?;
@@ -163,9 +166,13 @@ fn run() -> Result<()> {
         .chain_err(|| "failed to create playbin element")?;
 
     // set the URI to play
-    playbin
-        .set_property("uri", &content_provider.get_local_file_path())
-        .chain_err(|| "can't set uri property on playbin")?;
+    for url in content_provider.urls() {
+        playbin
+            .set_property("uri", &url)
+            .chain_err(|| "can't set uri property on playbin")?;
+
+        break
+    }
 
     // disable video and subtitle, if they exist
     // according to: https://github.com/sdroege/gstreamer-rs/blob/4117c01ff2c9ce9b46b8f63315af4dc284788e9b/examples/src/bin/playbin.rs#L27-L35

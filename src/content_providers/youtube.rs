@@ -11,7 +11,7 @@ use std::fs::File;
 use regex::Regex;
 use super::UrlContentProvider;
 
-struct Youtube {
+pub struct Youtube {
     /// The 11-character video id
     pub id: String,
     /// The duration of the streams in seconds
