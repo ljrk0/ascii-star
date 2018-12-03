@@ -27,7 +27,6 @@ struct Youtube {
 impl UrlContentProvider for Youtube {
     fn urls(&self) -> Vec<&str> {
         self.audiostreams.iter()
-            .chain(self.videostreams.iter())
             .chain(self.streams.iter())
             .map(|s: &Stream| -> &str {&s.url})
             .collect()
