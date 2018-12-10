@@ -1,10 +1,6 @@
 use crate::errors::*;
 use std::collections::HashMap;
-use hyper::client::response::Response;
-use hyper::Client;
-use hyper::net::HttpsConnector;
-use hyper::header::{ContentLength, Headers, ByteRangeSpec, Range};
-use hyper_native_tls::NativeTlsClient;
+use reqwest::Response;
 use std::io::Read;
 use std::io::prelude::*;
 use std::fs::File;
@@ -178,25 +174,25 @@ impl Stream {
 
 fn parse_url(query: &str) -> Result<HashMap<String, String>> {
     let url = format!("{}{}", "http://e.com?", query);
-    let parsed_url = hyper::Url::parse(&url).chain_err(|| format!("Error parsing url {}", url))?;
+    let parsed_url = reqwest::Url::parse(&url).chain_err(|| format!("Error parsing url {}", url))?;
     Ok(parsed_url.query_pairs().into_owned().collect())
 }
 
 // get file size from Content-Length header
 fn get_file_size(response: &Response) -> Result<u64> {
-    response.headers
-        .get::<ContentLength>()
+    response.headers()
+        .get::<reqwest::header::ContentLength>()
+        // .get::<ContentLength>()
+        // .get(reqwest::header::CONTENT_LENGTH)
+        // .and_then(|length| length.to_str().ok())
+        // .and_then(|length| length.parse::<u64>().ok())
         .map(|length| length.0)
         .chain_err(|| "Content-Length header missing")
 }
+
 fn send_request(url: &str) -> Result<Response> {
-    let ssl = NativeTlsClient::new().chain_err(|| "Error building NativeTlsClient")?;
-    let connector = HttpsConnector::new(ssl);
-    let client = Client::with_connector(connector);
-    // Pass custom headers to fix speed throttle (issue #10)
-    let mut header = Headers::new();
-    header.set(Range::Bytes(vec![ByteRangeSpec::AllFrom(0)]));
-    client.get(url).headers(header).send().chain_err(|| format!("Error sending request to {}", url))
+    let res = reqwest::get(url);
+    res.chain_err(|| format!("Error sending request to {}", url))
 }
 
 fn write_file(mut response: Response, title: &str, _file_size: u64) -> Result<()> {
