@@ -112,10 +112,7 @@ fn run() -> Result<()> {
 
     // construct path and uri to audio file
     let audio_path = header.audio_path;
-    let content_provider = get_url_content_provider(
-        audio_path
-        .to_str()
-        .chain_err(|| "could not open url content provider")?);
+    let content_provider = get_url_content_provider(&audio_path);
 
     // set up openal for capture
     let alto = Alto::load_default().chain_err(|| "could not load openal default implementation")?;
