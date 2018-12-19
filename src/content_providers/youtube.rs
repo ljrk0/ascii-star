@@ -181,12 +181,9 @@ fn parse_url(query: &str) -> Result<HashMap<String, String>> {
 // get file size from Content-Length header
 fn get_file_size(response: &Response) -> Result<u64> {
     response.headers()
-        .get::<reqwest::header::ContentLength>()
-        // .get::<ContentLength>()
-        // .get(reqwest::header::CONTENT_LENGTH)
-        // .and_then(|length| length.to_str().ok())
-        // .and_then(|length| length.parse::<u64>().ok())
-        .map(|length| length.0)
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|length| length.to_str().ok())
+        .and_then(|length| length.parse::<u64>().ok())
         .chain_err(|| "Content-Length header missing")
 }
 

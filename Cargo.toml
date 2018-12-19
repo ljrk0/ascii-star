@@ -15,7 +15,7 @@ log = "0.3"
 pitch_calc = "0.11"
 regex = "*"
 termion = "1.5"
-reqwest = "*"
+reqwest = "0.9"
 
 [dependencies.ultrastar-txt]
 git = "https://github.com/Lordakius/ultrastar-txt.git"
