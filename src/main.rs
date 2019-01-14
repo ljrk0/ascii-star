@@ -103,6 +103,11 @@ fn run() -> Result<()> {
 
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
 
+    if let Some(keyword) = matches.value_of("search") {
+        println!("search: {}", keyword);
+        return Ok(());
+    }
+
     // get path from command line arguments, unwrap should not fail because argument is required
     let song_filepath = Path::new(matches.value_of("songfile").unwrap());
 
