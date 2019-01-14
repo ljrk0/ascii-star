@@ -84,14 +84,18 @@ fn run() -> Result<()> {
         .version(VERSION)
         .author(AUTHOR)
         .about("An Ultrastar song player for the command line written in rust")
-        .group(ArgGroup::with_name("content_providers").args(&["local", "search"]))
+        .group(ArgGroup::with_name("content_providers").args(&["local", "search"]).required(true))
         .args(&[
             Arg::with_name("local")
                 .value_name("TXT")
+                .short("l")
+                .long("local")
                 .help("the song file to play")
                 .required(false),
             Arg::with_name("search")
                 .value_name("KEYWORD")
+                .short("s")
+                .long("search")
                 .help("a keyword to search on the server")
                 .required(false),
         ])
