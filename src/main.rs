@@ -114,15 +114,19 @@ fn run() -> Result<()> {
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
 
     if let Some(keyword) = matches.value_of("search") {
-        let play = if let Some(index) = matches.value_of("play") {
+        // did we get a `play` argument as well?
+        if let Some(index) = matches.value_of("play") {
             let index = index.parse::<usize>().chain_err(|| "index has to be an integer")?;
-            Some(index)
+            let url = server_interface::search(keyword, Some(index))?.unwrap();
         } else {
-            None
-        };
-        server_interface::search(keyword, play)?;
+            server_interface::search(keyword, None)?;
+        }
         return Ok(());
     }
+
+    // TODO: download text file into /tmp
+    // TODO: maybe use crate `tempfile` for this?
+    // TODO: pass this tmp path to ultrastar_txt
 
     // get path from command line arguments, unwrap should not fail because argument is required
     let song_filepath = Path::new(matches.value_of("songfile").unwrap());
