@@ -29,7 +29,7 @@ use std::io::{stdout, Write};
 use std::path::Path;
 use crate::gst::MessageView;
 use crate::gst::prelude::*;
-use clap::{App, Arg};
+use clap::{App, Arg, ArgGroup};
 use termion::screen::AlternateScreen;
 use alto::{Alto, Capture, Mono};
 use std::thread;
@@ -84,12 +84,17 @@ fn run() -> Result<()> {
         .version(VERSION)
         .author(AUTHOR)
         .about("An Ultrastar song player for the command line written in rust")
-        .arg(
-            Arg::with_name("songfile")
+        .group(ArgGroup::with_name("content_providers").args(&["local", "search"]))
+        .args(&[
+            Arg::with_name("local")
                 .value_name("TXT")
                 .help("the song file to play")
-                .required(true),
-        )
+                .required(false),
+            Arg::with_name("search")
+                .value_name("KEYWORD")
+                .help("a keyword to search on the server")
+                .required(false),
+        ])
         .get_matches();
 
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
