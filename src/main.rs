@@ -16,12 +16,17 @@ extern crate ultrastar_txt;
 // extern crate hyper_native_tls;
 extern crate regex;
 extern crate reqwest;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 extern crate glib;
 
 mod content_providers;
 mod draw;
 mod pitch;
+mod server_interface;
 
 use crate::content_providers::get_url_content_provider;
 
@@ -90,21 +95,32 @@ fn run() -> Result<()> {
                 .value_name("TXT")
                 .short("l")
                 .long("local")
-                .help("the song file to play")
-                .required(false),
+                .help("the song file to play"),
             Arg::with_name("search")
                 .value_name("KEYWORD")
                 .short("s")
                 .long("search")
-                .help("a keyword to search on the server")
-                .required(false),
+                .help("a keyword to search on the server"),
+            Arg::with_name("play")
+                .requires("search")
+                .value_name("INDEX")
+                .short("p")
+                .long("play")
+                .help("index from search list to play")
+                // TODO: add validation (value should be an int!)
         ])
         .get_matches();
 
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
 
     if let Some(keyword) = matches.value_of("search") {
-        println!("search: {}", keyword);
+        let play = if let Some(index) = matches.value_of("play") {
+            let index = index.parse::<usize>().chain_err(|| "index has to be an integer")?;
+            Some(index)
+        } else {
+            None
+        };
+        server_interface::search(keyword, play)?;
         return Ok(());
     }
 
