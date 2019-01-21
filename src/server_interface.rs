@@ -1,4 +1,6 @@
 use crate::errors::*;
+use tempfile::NamedTempFile;
+use std::io::copy;
 
 // GET http://server.com/search/123 -> String(JSON) -> Vec<Struct>
 // [{
@@ -43,4 +45,17 @@ pub fn search(keyword: &str, pick: Option<usize>) -> Result<Option<Url>> {
 
         Ok(None)
     }
+}
+
+pub fn download_file(url: String) -> Result<NamedTempFile> {
+    let mut dest = NamedTempFile::new()
+        .chain_err(|| "could not create temporary file")?;
+
+    let mut response = reqwest::get(&url)
+        .chain_err(|| "could not retrieve .txt from server")?;
+
+    copy(&mut response, dest.as_file_mut())
+        .chain_err(|| "could not write to .txt file")?;
+
+    Ok(dest)
 }

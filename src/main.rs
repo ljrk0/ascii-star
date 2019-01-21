@@ -31,7 +31,7 @@ mod server_interface;
 use crate::content_providers::get_url_content_provider;
 
 use std::io::{stdout, Write};
-use std::path::Path;
+use std::path::PathBuf;
 use crate::gst::MessageView;
 use crate::gst::prelude::*;
 use clap::{App, Arg, ArgGroup};
@@ -113,23 +113,33 @@ fn run() -> Result<()> {
 
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
 
-    if let Some(keyword) = matches.value_of("search") {
+    let tempfile = if let Some(keyword) = matches.value_of("search") {
         // did we get a `play` argument as well?
         if let Some(index) = matches.value_of("play") {
             let index = index.parse::<usize>().chain_err(|| "index has to be an integer")?;
             let url = server_interface::search(keyword, Some(index))?.unwrap();
+
+            Some(server_interface::download_file(url)
+                .chain_err(|| "could not download .txt file")?)
         } else {
             server_interface::search(keyword, None)?;
             return Ok(());
         }
-    }
+    } else {
+        None
+    };
 
     // TODO: download text file into /tmp
     // TODO: maybe use crate `tempfile` for this?
     // TODO: pass this tmp path to ultrastar_txt
 
     // get path from command line arguments, unwrap should not fail because argument is required
-    let song_filepath = Path::new(matches.value_of("songfile").unwrap());
+    let song_filepath: PathBuf = match &tempfile {
+        Some(file) => PathBuf::from(file.path()),
+        None => PathBuf::from(matches.value_of("local").unwrap())
+    };
+
+    dbg!(&song_filepath);
 
     // parse txt file
     let txt_song =
