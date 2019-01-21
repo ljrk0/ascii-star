@@ -120,8 +120,8 @@ fn run() -> Result<()> {
             let url = server_interface::search(keyword, Some(index))?.unwrap();
         } else {
             server_interface::search(keyword, None)?;
+            return Ok(());
         }
-        return Ok(());
     }
 
     // TODO: download text file into /tmp
