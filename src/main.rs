@@ -139,8 +139,6 @@ fn run() -> Result<()> {
         None => PathBuf::from(matches.value_of("local").unwrap())
     };
 
-    dbg!(&song_filepath);
-
     // parse txt file
     let txt_song =
         ultrastar_txt::parse_txt_song(song_filepath).chain_err(|| "could not parse song file")?;

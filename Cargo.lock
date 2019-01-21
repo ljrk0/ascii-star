@@ -1510,7 +1510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "ultrastar-txt"
 version = "0.1.2"
-source = "git+https://github.com/Lordakius/ultrastar-txt.git#647b29aa8b31e1e8654c9b52b0ca8552b9407c57"
+source = "git+https://github.com/Lordakius/ultrastar-txt.git#642e1b145fffa4fa998b0680a9863d3084cc2d4d"
 dependencies = [
  "chardet 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
