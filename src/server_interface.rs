@@ -25,6 +25,10 @@ struct SearchResult {
     path: String,
 }
 
+/// Search online for a given keyword and either print a list of songs found or pick one of them and return its Url
+///
+/// pick: if `None`, the list with all fetched songs will be printed,
+///       if `Some(i)`, the Url of the `i`th song will be returned
 pub fn search(keyword: &str, pick: Option<usize>) -> Result<Option<Url>> {
     // TODO: add keyword escaping to avoid injections
     let mut response: reqwest::Response = reqwest::get(&format!("{}/search?q={}", SERVER_URL, keyword)).chain_err(|| "server unreachable")?;
@@ -47,6 +51,7 @@ pub fn search(keyword: &str, pick: Option<usize>) -> Result<Option<Url>> {
     }
 }
 
+/// Try to download the given file
 pub fn download_file(url: String) -> Result<NamedTempFile> {
     let mut dest = NamedTempFile::new()
         .chain_err(|| "could not create temporary file")?;

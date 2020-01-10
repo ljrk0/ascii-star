@@ -89,6 +89,7 @@ fn run() -> Result<()> {
         .version(VERSION)
         .author(AUTHOR)
         .about("An Ultrastar song player for the command line written in rust")
+        // xor: either local or search, but not both
         .group(ArgGroup::with_name("content_providers").args(&["local", "search"]).required(true))
         .args(&[
             Arg::with_name("local")
@@ -102,7 +103,7 @@ fn run() -> Result<()> {
                 .long("search")
                 .help("a keyword to search on the server"),
             Arg::with_name("play")
-                .requires("search")
+                .requires("search") //<
                 .value_name("INDEX")
                 .short("p")
                 .long("play")
@@ -122,6 +123,7 @@ fn run() -> Result<()> {
             Some(server_interface::download_file(url)
                 .chain_err(|| "could not download .txt file")?)
         } else {
+            // this is an exit point!
             server_interface::search(keyword, None)?;
             return Ok(());
         }
@@ -133,15 +135,16 @@ fn run() -> Result<()> {
     // TODO: maybe use crate `tempfile` for this?
     // TODO: pass this tmp path to ultrastar_txt
 
-    // get path from command line arguments, unwrap should not fail because argument is required
+    // get path from tempfile or command line arguments.
+    // unwrap should not fail because tempfile is none => no `search` was done => `local` argument is required
     let song_filepath: PathBuf = match &tempfile {
         Some(file) => PathBuf::from(file.path()),
         None => PathBuf::from(matches.value_of("local").unwrap())
     };
 
     // parse txt file
-    let txt_song =
-        ultrastar_txt::parse_txt_song(song_filepath).chain_err(|| "could not parse song file")?;
+    let txt_song = ultrastar_txt::parse_txt_song(song_filepath)
+        .chain_err(|| "could not parse song file")?;
     let header = txt_song.header;
     let lines = txt_song.lines;
 
