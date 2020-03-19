@@ -205,7 +205,7 @@ fn run() -> Result<()> {
     gst::init().unwrap();
 
     // create the playbin element
-    let playbin = gst::ElementFactory::make("playbin", "playbin")
+    let playbin = gst::ElementFactory::make("playbin", Some("playbin"))
         .chain_err(|| "failed to create playbin element")?;
 
     // set the URI to play
@@ -236,7 +236,7 @@ fn run() -> Result<()> {
 
     // Start playing
     let ret = playbin.set_state(gst::State::Playing);
-    assert_ne!(ret, gst::StateChangeReturn::Failure);
+    assert_ne!(ret.is_err(), true);
 
     // connect to the bus
     let bus = playbin.get_bus().unwrap();
@@ -269,16 +269,14 @@ fn run() -> Result<()> {
                 if custom_data.playing {
                     let position = custom_data
                         .playbin
-                        .query_position(gst::Format::Time)
-                        .and_then(|v| v.try_to_time())
+                        .query_position()
                         .unwrap_or(gst::CLOCK_TIME_NONE);
 
                     // If we didn't know it yet, query the stream duration
                     if custom_data.duration == gst::CLOCK_TIME_NONE {
                         custom_data.duration = custom_data
                             .playbin
-                            .query_duration(gst::Format::Time)
-                            .and_then(|v| v.try_to_time())
+                            .query_duration()
                             .unwrap_or(gst::CLOCK_TIME_NONE);
                     }
                     // get note from capture thread
@@ -330,7 +328,7 @@ fn run() -> Result<()> {
 
     // Shutdown pipeline
     let ret = custom_data.playbin.set_state(gst::State::Null);
-    assert_ne!(ret, gst::StateChangeReturn::Failure);
+    assert_ne!(ret.is_err(), true);
 
     println!("");
     Ok(())
