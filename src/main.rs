@@ -236,7 +236,7 @@ fn run() -> Result<()> {
 
     // Start playing
     let ret = playbin.set_state(gst::State::Playing);
-    assert_ne!(ret.is_err(), true);
+    assert!(ret.is_ok());
 
     // connect to the bus
     let bus = playbin.get_bus().unwrap();
@@ -328,7 +328,7 @@ fn run() -> Result<()> {
 
     // Shutdown pipeline
     let ret = custom_data.playbin.set_state(gst::State::Null);
-    assert_ne!(ret.is_err(), true);
+    assert!(ret.is_ok());
 
     println!("");
     Ok(())
