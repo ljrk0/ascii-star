@@ -12,15 +12,29 @@ extern crate log;
 extern crate pitch_calc;
 extern crate termion;
 extern crate ultrastar_txt;
+// extern crate hyper;
+// extern crate hyper_native_tls;
+extern crate regex;
+extern crate reqwest;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
+extern crate glib;
+
+mod content_providers;
 mod draw;
 mod pitch;
+mod server_interface;
+
+use crate::content_providers::get_url_content_provider;
 
 use std::io::{stdout, Write};
-use std::path::Path;
-use gst::MessageView;
-use gst::prelude::*;
-use clap::{App, Arg};
+use std::path::PathBuf;
+use crate::gst::MessageView;
+use crate::gst::prelude::*;
+use clap::{App, Arg, ArgGroup};
 use termion::screen::AlternateScreen;
 use alto::{Alto, Capture, Mono};
 use std::thread;
@@ -30,7 +44,7 @@ use pitch_calc::*;
 mod errors {
     error_chain!{}
 }
-use errors::*;
+use crate::errors::*;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHOR: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -75,22 +89,62 @@ fn run() -> Result<()> {
         .version(VERSION)
         .author(AUTHOR)
         .about("An Ultrastar song player for the command line written in rust")
-        .arg(
-            Arg::with_name("songfile")
+        // xor: either local or search, but not both
+        .group(ArgGroup::with_name("content_providers").args(&["local", "search"]).required(true))
+        .args(&[
+            Arg::with_name("local")
                 .value_name("TXT")
-                .help("the song file to play")
-                .required(true),
-        )
+                .short("l")
+                .long("local")
+                .help("the song file to play"),
+            Arg::with_name("search")
+                .value_name("KEYWORD")
+                .short("s")
+                .long("search")
+                .help("a keyword to search on the server"),
+            Arg::with_name("play")
+                .requires("search") //<
+                .value_name("INDEX")
+                .short("p")
+                .long("play")
+                .help("index from search list to play")
+                // TODO: add validation (value should be an int!)
+        ])
         .get_matches();
 
     println!("Ultrastar CLI player {} by @man0lis", VERSION);
 
-    // get path from command line arguments, unwrap should not fail because argument is required
-    let song_filepath = Path::new(matches.value_of("songfile").unwrap());
+    let tempfile = if let Some(keyword) = matches.value_of("search") {
+        // did we get a `play` argument as well?
+        if let Some(index) = matches.value_of("play") {
+            let index = index.parse::<usize>().chain_err(|| "index has to be an integer")?;
+            let url = server_interface::search(keyword, Some(index))?.unwrap();
+
+            Some(server_interface::download_file(url)
+                .chain_err(|| "could not download .txt file")?)
+        } else {
+            // this is an exit point!
+            server_interface::search(keyword, None)?;
+            return Ok(());
+        }
+    } else {
+        None
+    };
+
+    // TODO: download text file into /tmp
+    // TODO: maybe use crate `tempfile` for this?
+    // TODO: pass this tmp path to ultrastar_txt
+
+    // get path from tempfile or command line arguments.
+    // unwrap should not fail because tempfile is none => no `search` was done => `local` argument is required
+    let song_filepath: PathBuf = match &tempfile {
+        Some(file) => PathBuf::from(file.path()),
+        None => PathBuf::from(matches.value_of("local").unwrap())
+    };
 
     // parse txt file
-    let txt_song =
-        ultrastar_txt::parse_txt_song(song_filepath).chain_err(|| "could not parse song file")?;
+    let txt_song = ultrastar_txt::parse_txt_song(song_filepath)
+        .chain_err(|| "could not parse song file")?;
     let header = txt_song.header;
     let lines = txt_song.lines;
 
@@ -104,8 +158,7 @@ fn run() -> Result<()> {
 
     // construct path and uri to audio file
     let audio_path = header.audio_path;
-    let mut uri = String::from("file://");
-    uri.push_str(audio_path.to_str().unwrap());
+    let content_provider = get_url_content_provider(&audio_path);
 
     // set up openal for capture
     let alto = Alto::load_default().chain_err(|| "could not load openal default implementation")?;
@@ -152,19 +205,38 @@ fn run() -> Result<()> {
     gst::init().unwrap();
 
     // create the playbin element
-    let playbin = gst::ElementFactory::make("playbin", "playbin")
+    let playbin = gst::ElementFactory::make("playbin", Some("playbin"))
         .chain_err(|| "failed to create playbin element")?;
 
     // set the URI to play
+    for url in content_provider.urls() {
+        playbin
+            .set_property("uri", &url)
+            .chain_err(|| "can't set uri property on playbin")?;
+
+        break
+    }
+
+    // disable video and subtitle, if they exist
+    // according to: https://github.com/sdroege/gstreamer-rs/blob/4117c01ff2c9ce9b46b8f63315af4dc284788e9b/examples/src/bin/playbin.rs#L27-L35
+    let flags = playbin
+        .get_property("flags")
+        .chain_err(|| "can't get playbin flags")?;
+    let flags_class = ::glib::FlagsClass::new(flags.type_()).unwrap();
+    let flags = flags_class.builder_with_value(flags).unwrap()
+        .unset_by_nick("text")
+        .unset_by_nick("video")
+        .build()
+        .unwrap();
     playbin
-        .set_property("uri", &uri)
-        .chain_err(|| "can't set uri property on playbin")?;
+        .set_property("flags", &flags)
+        .chain_err(|| "can't set playbin flags")?;
 
     println!("Playing {} by {}...\n", header.title, header.artist);
 
     // Start playing
     let ret = playbin.set_state(gst::State::Playing);
-    assert_ne!(ret, gst::StateChangeReturn::Failure);
+    assert!(ret.is_ok());
 
     // connect to the bus
     let bus = playbin.get_bus().unwrap();
@@ -197,16 +269,14 @@ fn run() -> Result<()> {
                 if custom_data.playing {
                     let position = custom_data
                         .playbin
-                        .query_position(gst::Format::Time)
-                        .and_then(|v| v.try_to_time())
+                        .query_position()
                         .unwrap_or(gst::CLOCK_TIME_NONE);
 
                     // If we didn't know it yet, query the stream duration
                     if custom_data.duration == gst::CLOCK_TIME_NONE {
                         custom_data.duration = custom_data
                             .playbin
-                            .query_duration(gst::Format::Time)
-                            .and_then(|v| v.try_to_time())
+                            .query_duration()
                             .unwrap_or(gst::CLOCK_TIME_NONE);
                     }
                     // get note from capture thread
@@ -258,7 +328,7 @@ fn run() -> Result<()> {
 
     // Shutdown pipeline
     let ret = custom_data.playbin.set_state(gst::State::Null);
-    assert_ne!(ret, gst::StateChangeReturn::Failure);
+    assert!(ret.is_ok());
 
     println!("");
     Ok(())
