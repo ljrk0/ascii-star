@@ -8,6 +8,9 @@ use std::io::prelude::*;
 use std::fs::File;
 use regex::Regex;
 use super::UrlContentProvider;
+use youtube_dl::{YoutubeDl,YoutubeDlOutput,Format};
+
+
 
 pub struct Youtube {
     /// The 11-character video id
@@ -24,129 +27,59 @@ pub struct Youtube {
 
 impl UrlContentProvider for Youtube {
     fn urls(&self) -> Vec<&str> {
-        self.audiostreams.iter()
+        let r = self.audiostreams.iter()
             .chain(self.streams.iter())
             .map(|s: &Stream| -> &str {&s.url})
-            .collect()
+            .collect();
+        eprintln!("{:#?}", r);
+        return r;
     }
 }
 
 impl Youtube {
     /// Create a YtVideo from an url
     pub fn new(url: &str) -> Result<Self> {
-        // Regex for youtube URLs
-        let url_regex = Regex::new(r"^.*(?:(?:youtu\.be/|v/|vi/|u/w/|embed/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*").unwrap();
-        let mut vid = url;
-
-        // TODO: is this equivalent? Should be
-        // if url_regex.is_match(vid) {
-        //     let vid_split = url_regex.captures(vid).unwrap();
-        if let Some(vid_split) = url_regex.captures(vid) {
-            vid = vid_split.get(1)
-                    .expect("regex capture failure")
-                    .as_str();
-        }
-
-        let url_info = format!("https://youtube.com/get_video_info?video_id={}", vid);
-
-        let basic = {
-            let mut url_response = send_request(&url_info)
-                .chain_err(|| "Network request failed")?;
-
-            let mut url_response_str = String::new();
-            url_response.read_to_string(&mut url_response_str)
-                .chain_err(|| "Respone from YT contained invalid UTF8")?;
-
-            parse_url(&url_response_str)?
+        eprintln!("url: {}", url);
+        let ytoutput = YoutubeDl::new(url).socket_timeout("15").run().unwrap();
+        let sv = match ytoutput {
+            YoutubeDlOutput::SingleVideo(sv) => *sv,
+            _ => panic!("Only SingleVideo URLs supported")
         };
-        if basic["status"] != "ok" {
-            bail!("Video not found");
-        }
+        //println!("{:#?}", sv);
 
-        let videoid      = &basic.get("video_id"      ).chain_err(|| "Error getting video_id from url")?;
-        let length       = &basic.get("length_seconds").chain_err(|| "Error getting length_seconds from url")?;
+        let mut audiostreams: Vec<Stream> = Vec::new();
 
-        let (streams, videostreams, audiostreams) = Self::get_streams(&basic)?;
-
-        Ok(Self {
-            id: videoid.to_string(),
-            length: length.parse::<u32>().unwrap(),
-            streams,
-            videostreams,
-            audiostreams,
-        })
-    }
-
-    fn get_streams(basic: &HashMap<String, String>) -> Result<(Vec<Stream>, Vec<Stream>, Vec<Stream>)> {
-        let mut parsed_streams: Vec<Stream> = Vec::new();
-        let streams: Vec<&str> = basic["url_encoded_fmt_stream_map"]
-            .split(',')
-            .collect();
-
-        for url in streams.iter() {
-            let parsed = parse_url(url)?;
-            let extension = &parsed["type"]
-                .split('/')
-                .nth(1)
-                .unwrap()
-                .split(';')
-                .next()
-                .unwrap();
-            let quality = &parsed["quality"];
-            let stream_url = &parsed["url"];
-
-            let parsed_stream = Stream {
-                        extension: extension.to_string(),
-                        quality: quality.to_string(),
-                        url: stream_url.to_string(),
+        // [...] a video [...] must contain either a formats entry or a url one
+        if let Some(url) = sv.url {
+            let astream = Stream {
+                extension: sv.ext.unwrap(),
+                quality: sv.quality.unwrap_or_default().to_string(),
+                url: url,
+            };
+            audiostreams.push(astream);
+        } else {
+            let formats = sv.formats.unwrap();
+            for fmt in formats {
+                if let Some(_acodec) = fmt.acodec {
+                    let astream = Stream {
+                        extension: fmt.ext.unwrap(),
+                        quality: fmt.quality.unwrap_or_default().to_string(),
+                        url: fmt.url.unwrap(),
                     };
-
-            parsed_streams.push(parsed_stream);
-        }
-
-        let mut parsed_videostreams: Vec<Stream> = Vec::new();
-        let mut parsed_audiostreams: Vec<Stream> = Vec::new();
-
-        if basic.contains_key("adaptive_fmts") {
-            let streams: Vec<&str> = basic["adaptive_fmts"]
-                .split(',')
-                .collect();
-
-            for url in streams.iter() {
-                let parsed = parse_url(url)?;
-                let extension = &parsed["type"]
-                    .split('/')
-                    .nth(1)
-                    .unwrap()
-                    .split(';')
-                    .next()
-                    .unwrap();
-                let stream_url = &parsed["url"];
-
-                if parsed.contains_key("quality_label") {
-                    let quality = &parsed["quality_label"];
-                    let parsed_videostream = Stream {
-                        extension: extension.to_string(),
-                        quality: quality.to_string(),
-                        url: stream_url.to_string(),
-                    };
-
-                    parsed_videostreams.push(parsed_videostream);
-                } else {
-                    let audio_extension = if extension == &"mp4" {"m4a"} else {extension};
-                    let quality = &parsed["bitrate"];
-                    let parsed_audiostream = Stream {
-                        extension: audio_extension.to_string(),
-                        quality: quality.to_string(),
-                        url: stream_url.to_string(),
-                    };
-
-                    parsed_audiostreams.push(parsed_audiostream);
+                    audiostreams.push(astream);
                 }
             }
         }
 
-        Ok((parsed_streams, parsed_videostreams, parsed_audiostreams))
+        let streams = Vec::new();
+        let videostreams = Vec::new();
+        Ok(Self {
+            id: sv.id,
+            length: sv.duration.unwrap().as_u64().unwrap() as u32,
+            streams,
+            audiostreams,
+            videostreams,
+        })
     }
 }
 
@@ -171,13 +104,6 @@ impl Stream {
         write_file(response, &file_name, file_size)?;
         Ok(())
     }
-}
-
-
-fn parse_url(query: &str) -> Result<HashMap<String, String>> {
-    let url = format!("{}{}", "http://e.com?", query);
-    let parsed_url = reqwest::Url::parse(&url).chain_err(|| format!("Error parsing url {}", url))?;
-    Ok(parsed_url.query_pairs().into_owned().collect())
 }
 
 // get file size from Content-Length header
