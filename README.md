@@ -9,6 +9,7 @@ Rust application:
 
 * gstreamer
 * gst-plugins
+* youtube-dl (for YouTube backend)
 
 ## Usage
 
@@ -52,19 +53,10 @@ playable resource URLs.
 
 ### YouTube Content Provider
 
-Unfortunately this content provider is currently out of date as it uses a
-legacy API.  The `get_video_info` API call doesn't immediately expose the
-`video_id` and `length_seconds` but encodes them in a JSON object called
-`player_response` which in turn contains
-
-* a `videoDetails` object containing `videoId` and `lengthSeconds` with the same
-  function as before
-* a `streamingData` object containing arrays `formats` and `adaptive_formats`
-  with streaming URLs embedded.
-
-However, not all videos use this API, especially older or music videos seem to
-be hard to access.  It's probably better to use the crate
-[youtube-dl](https://docs.rs/youtube_dl/0.5.0/youtube_dl/) for the heavy lifting.
+This provider uses the crate
+[youtube-dl](https://docs.rs/youtube_dl/0.5.0/youtube_dl/) for the heavy lifting
+and thus needs the `youtube-dl` binary in PATH.  Currently it fails in
+gstreamer though.
 
 ## Remote Song Server
 
