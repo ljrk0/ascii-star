@@ -40,6 +40,7 @@ use alto::{Alto, Capture, Mono};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use pitch_calc::*;
+use glib::value::Value;
 
 mod errors {
     error_chain!{}
@@ -211,7 +212,7 @@ fn run() -> Result<()> {
     // set the URI to play
     for url in content_provider.urls() {
         playbin
-            .set_property("uri", &url)
+            .try_set_property("uri", &url)
             .chain_err(|| "can't set uri property on playbin")?;
 
         break
@@ -219,8 +220,8 @@ fn run() -> Result<()> {
 
     // disable video and subtitle, if they exist
     // according to: https://github.com/sdroege/gstreamer-rs/blob/4117c01ff2c9ce9b46b8f63315af4dc284788e9b/examples/src/bin/playbin.rs#L27-L35
-    let flags = playbin
-        .property("flags")
+    let flags: Value = playbin
+        .try_property("flags")
         .chain_err(|| "can't get playbin flags")?;
     let flags_class = ::glib::FlagsClass::new(flags.type_()).unwrap();
     let flags = flags_class.builder_with_value(flags).unwrap()
@@ -229,7 +230,7 @@ fn run() -> Result<()> {
         .build()
         .unwrap();
     playbin
-        .set_property("flags", &flags)
+        .try_set_property_from_value("flags", &flags)
         .chain_err(|| "can't set playbin flags")?;
 
     println!("Playing {} by {}...\n", header.title, header.artist);
