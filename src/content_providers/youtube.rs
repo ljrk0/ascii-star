@@ -2,7 +2,7 @@
 
 use crate::errors::*;
 use std::collections::HashMap;
-use reqwest::Response;
+use reqwest::blocking::Response;
 use std::io::Read;
 use std::io::prelude::*;
 use std::fs::File;
@@ -190,7 +190,7 @@ fn get_file_size(response: &Response) -> Result<u64> {
 }
 
 fn send_request(url: &str) -> Result<Response> {
-    let res = reqwest::get(url);
+    let res = reqwest::blocking::get(url);
     res.chain_err(|| format!("Error sending request to {}", url))
 }
 
