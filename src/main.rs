@@ -334,7 +334,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn handle_message(custom_data: &mut CustomData, msg: &gst::GstRc<gst::MessageRef>) {
+fn handle_message(custom_data: &mut CustomData, msg: &gst::MessageRef) {
     match msg.view() {
         MessageView::Error(err) => {
             error!(
