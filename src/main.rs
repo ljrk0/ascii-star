@@ -94,18 +94,18 @@ fn run() -> Result<()> {
         .args(&[
             Arg::with_name("local")
                 .value_name("TXT")
-                .short("l")
+                .short('l')
                 .long("local")
                 .help("the song file to play"),
             Arg::with_name("search")
                 .value_name("KEYWORD")
-                .short("s")
+                .short('s')
                 .long("search")
                 .help("a keyword to search on the server"),
             Arg::with_name("play")
                 .requires("search") //<
                 .value_name("INDEX")
-                .short("p")
+                .short('p')
                 .long("play")
                 .help("index from search list to play")
                 // TODO: add validation (value should be an int!)
