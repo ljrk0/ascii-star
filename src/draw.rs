@@ -32,52 +32,52 @@ fn draw_notelines(line: &ultrastar_txt::Line, beat: f32, term_width: u16) -> Res
     let mut output = String::new();
 
     let first_note_start = if let Some(note) = line.notes.first() {
-        match note {
-            &ultrastar_txt::Note::Regular {
+        match *note {
+            ultrastar_txt::Note::Regular {
                 start,
                 duration: _,
                 pitch: _,
                 text: _,
             } => start,
-            &ultrastar_txt::Note::Golden {
+            ultrastar_txt::Note::Golden {
                 start,
                 duration: _,
                 pitch: _,
                 text: _,
             } => start,
-            &ultrastar_txt::Note::Freestyle {
+            ultrastar_txt::Note::Freestyle {
                 start,
                 duration: _,
                 pitch: _,
                 text: _,
             } => start,
-            &ultrastar_txt::Note::PlayerChange { player: _ } => 0, // TODO: this is bad find better solution
+            ultrastar_txt::Note::PlayerChange { player: _ } => 0, // TODO: this is bad find better solution
         }
     } else {
         return Err("line has no first note???".into());
     };
 
     let last_note_end = if let Some(note) = line.notes.last() {
-        match note {
-            &ultrastar_txt::Note::Regular {
+        match *note {
+            ultrastar_txt::Note::Regular {
                 start,
                 duration,
                 pitch: _,
                 text: _,
             } => start + duration,
-            &ultrastar_txt::Note::Golden {
+            ultrastar_txt::Note::Golden {
                 start,
                 duration,
                 pitch: _,
                 text: _,
             } => start + duration,
-            &ultrastar_txt::Note::Freestyle {
+            ultrastar_txt::Note::Freestyle {
                 start,
                 duration,
                 pitch: _,
                 text: _,
             } => start + duration,
-            &ultrastar_txt::Note::PlayerChange { player: _ } => 0, // TODO: this is bad find better solution
+            ultrastar_txt::Note::PlayerChange { player: _ } => 0, // TODO: this is bad find better solution
         }
     } else {
         return Err("line has no last note???".into());
@@ -86,20 +86,20 @@ fn draw_notelines(line: &ultrastar_txt::Line, beat: f32, term_width: u16) -> Res
     let chars_per_beat = term_width as f32 / (last_note_end - first_note_start) as f32;
 
     for note in line.notes.iter() {
-        let (start, duration, pitch, note_type) = match note {
-            &ultrastar_txt::Note::Regular {
+        let (start, duration, pitch, note_type) = match *note {
+            ultrastar_txt::Note::Regular {
                 start,
                 duration,
                 pitch,
                 text: _,
             } => (start, duration, Step(pitch as f32), NoteType::Regular),
-            &ultrastar_txt::Note::Golden {
+            ultrastar_txt::Note::Golden {
                 start,
                 duration,
                 pitch,
                 text: _,
             } => (start, duration, Step(pitch as f32), NoteType::Golden),
-            &ultrastar_txt::Note::Freestyle {
+            ultrastar_txt::Note::Freestyle {
                 start,
                 duration,
                 pitch,
@@ -208,20 +208,20 @@ fn draw_notelines(line: &ultrastar_txt::Line, beat: f32, term_width: u16) -> Res
 fn line_to_str(line: &ultrastar_txt::Line) -> String {
     let mut line_str = String::new();
     for note in line.notes.iter() {
-        match note {
-            &ultrastar_txt::Note::Regular {
+        match *note {
+            ultrastar_txt::Note::Regular {
                 start: _,
                 duration: _,
                 pitch: _,
                 ref text,
             } => line_str.push_str(text),
-            &ultrastar_txt::Note::Golden {
+            ultrastar_txt::Note::Golden {
                 start: _,
                 duration: _,
                 pitch: _,
                 ref text,
             } => line_str.push_str(text),
-            &ultrastar_txt::Note::Freestyle {
+            ultrastar_txt::Note::Freestyle {
                 start: _,
                 duration: _,
                 pitch: _,
@@ -254,20 +254,20 @@ fn gen_lyric_line(
 
     let mut lyric = format!("{}", termion::cursor::Goto(line_vpos, line_hpos));
     for note in line.notes.iter() {
-        let (start, duration, _pitch, text, note_type) = match note {
-            &ultrastar_txt::Note::Regular {
+        let (start, duration, _pitch, text, note_type) = match *note {
+            ultrastar_txt::Note::Regular {
                 start,
                 duration,
                 pitch,
                 ref text,
             } => (start, duration, pitch, text, NoteType::Regular),
-            &ultrastar_txt::Note::Golden {
+            ultrastar_txt::Note::Golden {
                 start,
                 duration,
                 pitch,
                 ref text,
             } => (start, duration, pitch, text, NoteType::Golden),
-            &ultrastar_txt::Note::Freestyle {
+            ultrastar_txt::Note::Freestyle {
                 start,
                 duration,
                 pitch,
@@ -287,25 +287,21 @@ fn gen_lyric_line(
                 }
             }
             // note has been played
-            else {
-                if note_type == NoteType::Golden {
-                    lyric.push_str(&text.yellow().to_string());
-                } else {
-                    lyric.push_str(&text.white().to_string());
-                }
-            }
-        } else {
-            if note_type == NoteType::Golden {
-                lyric.push_str(&text.bright_yellow().to_string());
+            else if note_type == NoteType::Golden {
+                lyric.push_str(&text.yellow().to_string());
             } else {
-                lyric.push_str(&text.bright_blue().to_string());
+                lyric.push_str(&text.white().to_string());
             }
+        } else if note_type == NoteType::Golden {
+            lyric.push_str(&text.bright_yellow().to_string());
+        } else {
+            lyric.push_str(&text.bright_blue().to_string());
         }
     }
     // add current note under the line
     let note = match dominant_note {
         Some(n) => format!("{:?}", n),
-        None => format!("                    "),
+        None => "                    ".to_string(),
     };
     let line_hpos = 2 + 17 * 2 + 10 + 3; // TODO this is below the lines but should not be a magic number
     let line_vpos = (term_width - note.len() as u16) / 2 + 1;
