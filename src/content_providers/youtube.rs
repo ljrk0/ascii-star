@@ -8,6 +8,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use regex::Regex;
 use super::UrlContentProvider;
+use error_chain::bail;
 
 pub struct Youtube {
     /// The 11-character video id

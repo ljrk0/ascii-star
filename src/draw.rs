@@ -1,8 +1,6 @@
-extern crate colored;
-extern crate termion;
-extern crate ultrastar_txt;
-
 mod errors {
+    use error_chain::error_chain;
+
     error_chain!{}
 }
 use crate::errors::*;

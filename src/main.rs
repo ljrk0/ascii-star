@@ -1,27 +1,6 @@
 #![recursion_limit = "1024"]
-#[macro_use]
-extern crate error_chain;
 
-extern crate alto;
-extern crate clap;
-extern crate colored;
-extern crate env_logger;
 extern crate gstreamer as gst;
-#[macro_use]
-extern crate log;
-extern crate pitch_calc;
-extern crate termion;
-extern crate ultrastar_txt;
-// extern crate hyper;
-// extern crate hyper_native_tls;
-extern crate regex;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-
-extern crate glib;
 
 mod content_providers;
 mod draw;
@@ -30,19 +9,18 @@ mod server_interface;
 
 use crate::content_providers::get_url_content_provider;
 
-use std::io::{stdout, Write};
-use std::path::PathBuf;
-use crate::gst::MessageView;
-use crate::gst::prelude::*;
+use std::{io::{stdout, Write}, path::PathBuf, thread, sync::{Arc, Mutex}};
+use crate::gst::{MessageView, prelude::*};
 use clap::{App, Arg, ArgGroup};
 use termion::screen::AlternateScreen;
 use alto::{Alto, Capture, Mono};
-use std::thread;
-use std::sync::{Arc, Mutex};
 use pitch_calc::*;
 use glib::value::Value;
+use log::{info, error};
 
 mod errors {
+    use error_chain::error_chain;
+
     error_chain!{}
 }
 use crate::errors::*;
