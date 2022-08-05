@@ -1,8 +1,8 @@
 //! Abstracts over content providers for the songs.
 
-mod youtube;
+mod youtube_dl;
 
-use self::youtube::Youtube;
+use self::youtube_dl::YtDlContentProvider;
 
 /// A content provider that uses URLs to provide content.
 pub trait UrlContentProvider {
@@ -16,7 +16,7 @@ pub fn get_url_content_provider(url: &str) -> Box<dyn UrlContentProvider> {
         Box::new(SimpleURLProvider::from_url(url))
     } else if url.starts_with("http://") || url.starts_with("https://") {
         if url.contains("youtu.be") || url.contains("youtube") {
-            Box::new(Youtube::new(url).unwrap())
+            Box::new(YtDlContentProvider::new(url).unwrap())
         } else {
             Box::new(SimpleURLProvider::from_url(url))
         }
