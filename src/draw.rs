@@ -116,25 +116,25 @@ fn draw_notelines(line: &ultrastar_txt::Line, beat: f32, term_width: u16) -> Res
 
         let color_note = match note_type {
             NoteType::Golden => {
-                Box::new(|note: &str| note.yellow().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.yellow().to_string()) as Box<dyn Fn(&str) -> String>
             }
             NoteType::Regular => {
-                Box::new(|note: &str| note.bright_blue().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.bright_blue().to_string()) as Box<dyn Fn(&str) -> String>
             }
             NoteType::Freestyle => {
-                Box::new(|note: &str| note.red().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.red().to_string()) as Box<dyn Fn(&str) -> String>
             }
         };
 
         let color_played_note = match note_type {
             NoteType::Golden => {
-                Box::new(|note: &str| note.bright_yellow().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.bright_yellow().to_string()) as Box<dyn Fn(&str) -> String>
             }
             NoteType::Regular => {
-                Box::new(|note: &str| note.white().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.white().to_string()) as Box<dyn Fn(&str) -> String>
             }
             NoteType::Freestyle => {
-                Box::new(|note: &str| note.bright_red().to_string()) as Box<Fn(&str) -> String>
+                Box::new(|note: &str| note.bright_red().to_string()) as Box<dyn Fn(&str) -> String>
             }
         };
 
