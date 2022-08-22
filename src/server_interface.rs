@@ -31,7 +31,7 @@ struct SearchResult {
 ///       if `Some(i)`, the Url of the `i`th song will be returned
 pub fn search(keyword: &str, pick: Option<usize>) -> Result<Option<Url>> {
     // TODO: add keyword escaping to avoid injections
-    let mut response: reqwest::Response = reqwest::get(&format!("{}/search?q={}", SERVER_URL, keyword)).chain_err(|| "server unreachable")?;
+    let response = reqwest::blocking::get(&format!("{}/search?q={}", SERVER_URL, keyword)).chain_err(|| "server unreachable")?;
     let result: ServerResponse = response.json().chain_err(|| "failed deserializing server response")?;
 
     if let Some(index) = pick {
@@ -56,7 +56,7 @@ pub fn download_file(url: String) -> Result<NamedTempFile> {
     let mut dest = NamedTempFile::new()
         .chain_err(|| "could not create temporary file")?;
 
-    let mut response = reqwest::get(&url)
+    let mut response = reqwest::blocking::get(&url)
         .chain_err(|| "could not retrieve .txt from server")?;
 
     copy(&mut response, dest.as_file_mut())

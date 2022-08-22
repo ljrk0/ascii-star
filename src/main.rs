@@ -40,6 +40,7 @@ use alto::{Alto, Capture, Mono};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use pitch_calc::*;
+use glib::value::Value;
 
 mod errors {
     error_chain!{}
@@ -53,7 +54,7 @@ struct CustomData {
     playbin: gst::Element,    // Our one and only element
     playing: bool,            // Are we in the PLAYING state?
     terminate: bool,          // Should we terminate execution?
-    duration: gst::ClockTime, // How long does this media last, in nanoseconds
+    duration: Option<gst::ClockTime>, // How long does this media last, in nanoseconds
 }
 
 fn main() {
@@ -94,18 +95,18 @@ fn run() -> Result<()> {
         .args(&[
             Arg::with_name("local")
                 .value_name("TXT")
-                .short("l")
+                .short('l')
                 .long("local")
                 .help("the song file to play"),
             Arg::with_name("search")
                 .value_name("KEYWORD")
-                .short("s")
+                .short('s')
                 .long("search")
                 .help("a keyword to search on the server"),
             Arg::with_name("play")
                 .requires("search") //<
                 .value_name("INDEX")
-                .short("p")
+                .short('p')
                 .long("play")
                 .help("index from search list to play")
                 // TODO: add validation (value should be an int!)
@@ -211,7 +212,7 @@ fn run() -> Result<()> {
     // set the URI to play
     for url in content_provider.urls() {
         playbin
-            .set_property("uri", &url)
+            .try_set_property("uri", &url)
             .chain_err(|| "can't set uri property on playbin")?;
 
         break
@@ -219,8 +220,8 @@ fn run() -> Result<()> {
 
     // disable video and subtitle, if they exist
     // according to: https://github.com/sdroege/gstreamer-rs/blob/4117c01ff2c9ce9b46b8f63315af4dc284788e9b/examples/src/bin/playbin.rs#L27-L35
-    let flags = playbin
-        .get_property("flags")
+    let flags: Value = playbin
+        .try_property("flags")
         .chain_err(|| "can't get playbin flags")?;
     let flags_class = ::glib::FlagsClass::new(flags.type_()).unwrap();
     let flags = flags_class.builder_with_value(flags).unwrap()
@@ -229,7 +230,7 @@ fn run() -> Result<()> {
         .build()
         .unwrap();
     playbin
-        .set_property("flags", &flags)
+        .try_set_property_from_value("flags", &flags)
         .chain_err(|| "can't set playbin flags")?;
 
     println!("Playing {} by {}...\n", header.title, header.artist);
@@ -239,12 +240,12 @@ fn run() -> Result<()> {
     assert!(ret.is_ok());
 
     // connect to the bus
-    let bus = playbin.get_bus().unwrap();
+    let bus = playbin.bus().unwrap();
     let mut custom_data = CustomData {
         playbin: playbin,
         playing: false,
         terminate: false,
-        duration: gst::CLOCK_TIME_NONE,
+        duration: gst::ClockTime::NONE,
     };
 
     thread::spawn(capture_thread);
@@ -259,7 +260,7 @@ fn run() -> Result<()> {
 
     // begin main loop
     while !custom_data.terminate {
-        let msg = bus.timed_pop(10 * gst::MSECOND);
+        let msg = bus.timed_pop(10 * gst::ClockTime::MSECOND);
 
         match msg {
             Some(msg) => {
@@ -270,19 +271,19 @@ fn run() -> Result<()> {
                     let position = custom_data
                         .playbin
                         .query_position()
-                        .unwrap_or(gst::CLOCK_TIME_NONE);
+                        .or(gst::ClockTime::NONE);
 
                     // If we didn't know it yet, query the stream duration
-                    if custom_data.duration == gst::CLOCK_TIME_NONE {
+                    if custom_data.duration == gst::ClockTime::NONE {
                         custom_data.duration = custom_data
                             .playbin
                             .query_duration()
-                            .unwrap_or(gst::CLOCK_TIME_NONE);
+                            .or(gst::ClockTime::NONE);
                     }
                     // get note from capture thread
                     let dominant_note = detected_note.lock().unwrap().clone();
                     // calculate current beat
-                    let position_ms = position.mseconds().unwrap_or(0) as f32;
+                    let position_ms = position.map(|p| p.mseconds()).unwrap_or(0) as f32;
                     // don't know why I need the 4.0 but its in the
                     // original game and its not working without it
                     let beat = (position_ms - gap) * (bpms * 4.0);
@@ -334,14 +335,14 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn handle_message(custom_data: &mut CustomData, msg: &gst::GstRc<gst::MessageRef>) {
+fn handle_message(custom_data: &mut CustomData, msg: &gst::MessageRef) {
     match msg.view() {
         MessageView::Error(err) => {
             error!(
                 "Error received from element {:?}: {} ({:?})",
-                msg.get_src().map(|s| s.get_path_string()),
-                err.get_error(),
-                err.get_debug()
+                msg.src().map(|s| s.path_string()),
+                err.error(),
+                err.debug()
             );
             custom_data.terminate = true;
         }
@@ -351,14 +352,14 @@ fn handle_message(custom_data: &mut CustomData, msg: &gst::GstRc<gst::MessageRef
         }
         MessageView::DurationChanged(_) => {
             // The duration has changed, mark the current one as invalid
-            custom_data.duration = gst::CLOCK_TIME_NONE;
+            custom_data.duration = gst::ClockTime::NONE;
         }
-        MessageView::StateChanged(state) => if msg.get_src()
+        MessageView::StateChanged(state) => if msg.src()
             .map(|s| s == custom_data.playbin)
             .unwrap_or(false)
         {
-            let new_state = state.get_current();
-            let old_state = state.get_old();
+            let new_state = state.current();
+            let old_state = state.old();
 
             info!(
                 "Pipeline state changed from {:?} to {:?}",
