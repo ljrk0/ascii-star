@@ -1,27 +1,6 @@
 #![recursion_limit = "1024"]
-#[macro_use]
-extern crate error_chain;
 
-extern crate alto;
-extern crate clap;
-extern crate colored;
-extern crate env_logger;
 extern crate gstreamer as gst;
-#[macro_use]
-extern crate log;
-extern crate pitch_calc;
-extern crate termion;
-extern crate ultrastar_txt;
-// extern crate hyper;
-// extern crate hyper_native_tls;
-extern crate regex;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-
-extern crate glib;
 
 mod content_providers;
 mod draw;
@@ -30,25 +9,24 @@ mod server_interface;
 
 use crate::content_providers::get_url_content_provider;
 
-use std::io::{stdout, Write};
-use std::path::PathBuf;
-use crate::gst::MessageView;
-use crate::gst::prelude::*;
+use std::{io::{stdout, Write}, path::PathBuf, thread, sync::{Arc, Mutex}};
+use crate::gst::{MessageView, prelude::*};
 use clap::{App, Arg, ArgGroup};
 use termion::screen::AlternateScreen;
 use alto::{Alto, Capture, Mono};
-use std::thread;
-use std::sync::{Arc, Mutex};
 use pitch_calc::*;
 use glib::value::Value;
+use log::{info, error};
 
 mod errors {
+    use error_chain::error_chain;
+
     error_chain!{}
 }
 use crate::errors::*;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const AUTHOR: &'static str = env!("CARGO_PKG_AUTHORS");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
 struct CustomData {
     playbin: gst::Element,    // Our one and only element
@@ -59,7 +37,6 @@ struct CustomData {
 
 fn main() {
     if let Err(ref e) = run() {
-        use std::io::Write;
         let stderr = &mut ::std::io::stderr();
         let errmsg = "Error writing to stderr";
 
@@ -83,7 +60,7 @@ const SAMPLE_RATE: u32 = 44_100;
 const FRAMES: i32 = 2048;
 
 fn run() -> Result<()> {
-    let _ = env_logger::init();
+    env_logger::init();
 
     // manage command line arguments using clap
     let matches = App::new("usrs-cli")
@@ -210,12 +187,11 @@ fn run() -> Result<()> {
         .chain_err(|| "failed to create playbin element")?;
 
     // set the URI to play
-    for url in content_provider.urls() {
+    let urls = content_provider.urls();
+    if let Some(url) = urls.first() {
         playbin
             .try_set_property("uri", &url)
             .chain_err(|| "can't set uri property on playbin")?;
-
-        break
     }
 
     // disable video and subtitle, if they exist
@@ -242,7 +218,7 @@ fn run() -> Result<()> {
     // connect to the bus
     let bus = playbin.bus().unwrap();
     let mut custom_data = CustomData {
-        playbin: playbin,
+        playbin,
         playing: false,
         terminate: false,
         duration: gst::ClockTime::NONE,
@@ -281,7 +257,7 @@ fn run() -> Result<()> {
                             .or(gst::ClockTime::NONE);
                     }
                     // get note from capture thread
-                    let dominant_note = detected_note.lock().unwrap().clone();
+                    let dominant_note = *detected_note.lock().unwrap();
                     // calculate current beat
                     let position_ms = position.map(|p| p.mseconds()).unwrap_or(0) as f32;
                     // don't know why I need the 4.0 but its in the
@@ -331,7 +307,7 @@ fn run() -> Result<()> {
     let ret = custom_data.playbin.set_state(gst::State::Null);
     assert!(ret.is_ok());
 
-    println!("");
+    println!();
     Ok(())
 }
 

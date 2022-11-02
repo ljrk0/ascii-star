@@ -2,6 +2,8 @@ use crate::errors::*;
 use tempfile::NamedTempFile;
 use std::io::copy;
 
+use serde_derive::Deserialize;
+
 // GET http://server.com/search/123 -> String(JSON) -> Vec<Struct>
 // [{
 //     name: "123",
